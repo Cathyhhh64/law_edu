@@ -2,7 +2,7 @@
 // 目标：教育学生防性侵法律知识和求救常识
 // Version 1.4 - Added image tags for visual storytelling
 
--> prologue
+// -> prologue  // 已注释：由 v2 INCLUDE，入口在 v2 的 -> intro
 
 // ========================================
 // CORE VARIABLES (核心变量)

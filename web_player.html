@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>普法情景游戏 v1.4</title>
+    <title>普法情景游戏 v2.0</title>
     <style>
         * {
             margin: 0;
@@ -239,6 +239,24 @@
 
         #text-area::-webkit-scrollbar-thumb:hover {
             background: #555;
+        }
+
+        #text-area.has-more {
+            cursor: pointer;
+        }
+
+        #continue-indicator {
+            text-align: center;
+            color: #aaa;
+            font-size: 13px;
+            padding: 6px 0 2px;
+            animation: pulse 1.5s ease-in-out infinite;
+            user-select: none;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.4; }
+            50% { opacity: 1; }
         }
 
         /* 可折叠提示框 */
@@ -796,162 +814,181 @@
             }
         }
 
-        // 显示文本
-        function displayText(text) {
-            const content = document.getElementById('story-content');
+        // 逐段点击显示状态
+        let pendingParagraphs = [];  // 待显示的段落HTML数组
+        let currentParagraphIndex = 0;
+        let pendingChoices = null;
 
-            // 将文本转换为HTML段落，处理提示框
+        function setupClickReveal(paragraphsHtml, choices) {
+            pendingParagraphs = paragraphsHtml;
+            currentParagraphIndex = 0;
+            pendingChoices = choices;
+
+            const content = document.getElementById('story-content');
+            content.innerHTML = '';
+            document.getElementById('choices').innerHTML = '';
+
+            const textArea = document.getElementById('text-area');
+            textArea.classList.add('has-more');
+            textArea.addEventListener('click', onTextAreaClick);
+
+            showNextParagraph();
+        }
+
+        function onTextAreaClick() {
+            if (currentParagraphIndex < pendingParagraphs.length) {
+                showNextParagraph();
+            }
+        }
+
+        function showNextParagraph() {
+            const content = document.getElementById('story-content');
+            const textArea = document.getElementById('text-area');
+
+            // 移除旧的继续提示
+            const old = document.getElementById('continue-indicator');
+            if (old) old.remove();
+
+            if (currentParagraphIndex < pendingParagraphs.length) {
+                const wrapper = document.createElement('div');
+                wrapper.innerHTML = pendingParagraphs[currentParagraphIndex];
+                // 将子节点逐一追加
+                while (wrapper.firstChild) {
+                    content.appendChild(wrapper.firstChild);
+                }
+
+                // 重新绑定提示框点击事件（新追加的节点）
+                content.querySelectorAll('.hint-header').forEach(header => {
+                    if (!header.dataset.bound) {
+                        header.dataset.bound = '1';
+                        header.addEventListener('click', function(e) {
+                            e.stopPropagation();
+                            const hintContent = this.nextElementSibling;
+                            const icon = this.querySelector('.hint-icon');
+                            hintContent.classList.toggle('show');
+                            icon.classList.toggle('expanded');
+                        });
+                    }
+                });
+
+                currentParagraphIndex++;
+                textArea.scrollTop = textArea.scrollHeight;
+            }
+
+            if (currentParagraphIndex < pendingParagraphs.length) {
+                // 还有更多段落，显示继续提示
+                const indicator = document.createElement('div');
+                indicator.id = 'continue-indicator';
+                indicator.textContent = '▼ 点击继续';
+                content.appendChild(indicator);
+            } else {
+                // 所有段落显示完毕
+                textArea.classList.remove('has-more');
+                textArea.removeEventListener('click', onTextAreaClick);
+
+                if (pendingChoices && pendingChoices.length > 0) {
+                    displayChoices(pendingChoices);
+                } else {
+                    displayGameEnd();
+                }
+            }
+        }
+
+        // 显示文本（返回段落HTML数组，不直接渲染）
+        function buildParagraphsHtml(text) {
             const paragraphs = text.split('\n').filter(p => p.trim());
-            let html = '';
-            let inHint = false;           // 是否在提示块中
-            let hintHasSeparator = false; // 提示块是否有分隔线
+            const result = [];  // 每个元素是一段HTML字符串
+            let inHint = false;
+            let hintHasSeparator = false;
             let hintType = '';
             let hintContent = '';
             let sawOpeningSeparator = false;
 
+            function flush(html) {
+                if (html) result.push(html);
+            }
+
             paragraphs.forEach((p, index) => {
                 const trimmedP = p.trim();
 
-                // 检测分隔线
                 if (trimmedP.startsWith('════')) {
                     if (inHint && hintHasSeparator && hintContent) {
-                        // 这是结束分隔线，输出提示
-                        html += createCollapsibleHint(hintType, hintContent);
-                        inHint = false;
-                        hintHasSeparator = false;
-                        hintContent = '';
-                        hintType = '';
+                        flush(createCollapsibleHint(hintType, hintContent));
+                        inHint = false; hintHasSeparator = false; hintContent = ''; hintType = '';
                     } else {
-                        // 这是开始分隔线
                         sawOpeningSeparator = true;
                     }
                     return;
                 }
 
-                // 检测 💡 开头的提示
                 if (trimmedP.startsWith('💡')) {
-                    // 如果之前有未输出的提示，先输出
-                    if (inHint && hintContent) {
-                        html += createCollapsibleHint(hintType, hintContent);
-                    }
-
-                    let hintText = trimmedP.replace('💡', '').trim();
-                    hintText = hintText.replace(/^提示[：:]?\s*/, '').trim();
-
-                    inHint = true;
-                    hintType = 'tip';
-                    hintHasSeparator = sawOpeningSeparator;
+                    if (inHint && hintContent) flush(createCollapsibleHint(hintType, hintContent));
+                    let hintText = trimmedP.replace('💡', '').trim().replace(/^提示[：:]?\s*/, '').trim();
+                    inHint = true; hintType = 'tip'; hintHasSeparator = sawOpeningSeparator;
                     hintContent = hintText ? `<p>${hintText}</p>` : '';
                     sawOpeningSeparator = false;
                     return;
                 }
 
-                // 检测 📖 法律小课堂
                 if (trimmedP.includes('📖 法律小课堂')) {
-                    // 如果之前有未输出的提示，先输出
-                    if (inHint && hintContent) {
-                        html += createCollapsibleHint(hintType, hintContent);
-                    }
-
+                    if (inHint && hintContent) flush(createCollapsibleHint(hintType, hintContent));
                     const hintText = trimmedP.replace('📖 法律小课堂', '').replace(/[：:]\s*/, '').trim();
-
-                    inHint = true;
-                    hintType = 'legal';
-                    hintHasSeparator = sawOpeningSeparator;
+                    inHint = true; hintType = 'legal'; hintHasSeparator = sawOpeningSeparator;
                     hintContent = hintText ? `<p>${hintText}</p>` : '';
                     sawOpeningSeparator = false;
                     return;
                 }
 
-                // 检测 【结局复盘】 - 现在作为普通文本处理，不做折叠
                 if (trimmedP.includes('【结局复盘】')) {
-                    // 如果之前有未输出的提示，先输出
-                    if (inHint && hintContent) {
-                        html += createCollapsibleHint(hintType, hintContent);
-                        inHint = false;
-                        hintContent = '';
-                    }
-                    // 作为标题输出
-                    html += `<h3 style="color: #FF9800; margin-top: 20px;">📋 ${trimmedP}</h3>`;
+                    if (inHint && hintContent) { flush(createCollapsibleHint(hintType, hintContent)); inHint = false; hintContent = ''; }
+                    flush(`<h3 style="color: #FF9800; margin-top: 20px;">📋 ${trimmedP}</h3>`);
                     sawOpeningSeparator = false;
                     return;
                 }
 
-                // 检测 🌟法律知识复习 - 作为普通文本处理
                 if (trimmedP.includes('🌟法律知识复习')) {
-                    // 如果之前有未输出的提示，先输出
-                    if (inHint && hintContent) {
-                        html += createCollapsibleHint(hintType, hintContent);
-                        inHint = false;
-                        hintContent = '';
-                    }
-                    // 作为标题输出
-                    html += `<h3 style="color: #2196F3; margin-top: 20px;">${trimmedP}</h3>`;
+                    if (inHint && hintContent) { flush(createCollapsibleHint(hintType, hintContent)); inHint = false; hintContent = ''; }
+                    flush(`<h3 style="color: #2196F3; margin-top: 20px;">${trimmedP}</h3>`);
                     sawOpeningSeparator = false;
                     return;
                 }
 
-                // 重置分隔线标记
                 sawOpeningSeparator = false;
 
-                // 如果在提示块内
                 if (inHint) {
-                    // 检查是否是bullet point或继续内容
                     if (trimmedP.startsWith('•') || trimmedP.startsWith('✓') || trimmedP.startsWith('(')) {
-                        // 是bullet point，继续累积
                         hintContent += `<p>${trimmedP}</p>`;
                     } else if (!hintHasSeparator) {
-                        // 无分隔线的提示，检查后面是否还有bullet points
-                        // 如果下一行是bullet point，继续收集当前行
                         const nextLines = paragraphs.slice(index + 1);
-                        const hasMoreBullets = nextLines.some((line, i) => {
+                        const hasMoreBullets = nextLines.some(line => {
                             const l = line.trim();
-                            // 找到第一个非空行
                             if (l.startsWith('•') || l.startsWith('✓')) return true;
-                            // 如果遇到新的特殊标记，停止检查
                             if (l.startsWith('💡') || l.includes('📖') || l.startsWith('════')) return false;
-                            return null; // 继续检查
+                            return null;
                         });
-
                         if (hasMoreBullets) {
-                            // 后面还有bullet points，继续收集
                             hintContent += `<p>${trimmedP}</p>`;
                         } else {
-                            // 后面没有bullet points了，输出提示并处理当前行
-                            html += createCollapsibleHint(hintType, hintContent);
-                            inHint = false;
-                            hintContent = '';
-                            html += `<p>${trimmedP}</p>`;
+                            flush(createCollapsibleHint(hintType, hintContent));
+                            inHint = false; hintContent = '';
+                            flush(`<p>${trimmedP}</p>`);
                         }
                     } else {
-                        // 有分隔线的提示，继续累积直到遇到结束分隔线
                         hintContent += `<p>${trimmedP}</p>`;
                     }
                 } else {
-                    // 正常段落
-                    html += `<p>${trimmedP}</p>`;
+                    flush(`<p>${trimmedP}</p>`);
                 }
             });
 
-            // 如果还有未闭合的提示
-            if (inHint && hintContent) {
-                html += createCollapsibleHint(hintType, hintContent);
-            }
+            if (inHint && hintContent) flush(createCollapsibleHint(hintType, hintContent));
+            return result;
+        }
 
-            content.innerHTML = html;
-
-            // 添加提示框点击事件
-            document.querySelectorAll('.hint-header').forEach(header => {
-                header.addEventListener('click', function() {
-                    const content = this.nextElementSibling;
-                    const icon = this.querySelector('.hint-icon');
-                    content.classList.toggle('show');
-                    icon.classList.toggle('expanded');
-                });
-            });
-
-            // 滚动到顶部
-            document.getElementById('text-area').scrollTop = 0;
+        // 显示文本：转为逐段点击模式
+        function displayText(text, choices) {
+            const paragraphsHtml = buildParagraphsHtml(text);
+            setupClickReveal(paragraphsHtml, choices || null);
         }
 
         // 创建可折叠提示框

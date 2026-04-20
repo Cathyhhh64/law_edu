@@ -1,0 +1,29 @@
+- generic [ref=e2]:
+  - generic [ref=e3]:
+    - generic [ref=e4]:
+      - img [ref=e6]
+      - generic [ref=e8]:
+        - generic [ref=e9]: 普法情景游戏
+        - generic [ref=e10]: 学法·知法·守法
+    - generic [ref=e11]:
+      - img "左侧角色" [ref=e13]
+      - img "右侧角色" [ref=e15]
+    - generic [ref=e16]:
+      - paragraph [ref=e18]: 你叫小雨。
+      - generic [ref=e19]:
+        - button "我是男生" [ref=e20] [cursor=pointer]
+        - button "我是女生" [ref=e21] [cursor=pointer]
+  - generic [ref=e22]:
+    - generic [ref=e23]:
+      - generic [ref=e25]: ✨
+      - generic [ref=e26]:
+        - generic [ref=e27]: 灵灵
+        - generic [ref=e28]: 你的守护精灵
+      - generic "在线" [ref=e29]
+    - generic [ref=e31]:
+      - paragraph [ref=e32]: 你好！我是灵灵，你的守护精灵 ✨
+      - paragraph [ref=e33]: 在游戏过程中，你可以随时问我任何问题——关于法律、安全，或者刚才的故事情节。我会尽力帮助你！
+    - generic [ref=e34]:
+      - textbox "向灵灵提问" [ref=e35]:
+        - /placeholder: 问灵灵任何问题...
+      - button "发送消息" [ref=e36] [cursor=pointer]: 发送
