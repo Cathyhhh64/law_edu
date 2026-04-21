@@ -37,7 +37,7 @@
             display: flex;
             justify-content: center;
             align-items: flex-start;
-            padding: 24px 16px;
+            padding: 0;
         }
 
         /* ===== 页面布局 ===== */
@@ -64,49 +64,11 @@
         }
 
         /* ===== 顶部标题栏 ===== */
-        #game-header {
-            background: linear-gradient(135deg, var(--navy) 0%, var(--navy-light) 100%);
-            padding: 1px 2px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        #game-header-icon {
-            width: 36px;
-            height: 36px;
-            background: rgba(255,255,255,0.15);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-        }
-
-        #game-header-icon svg {
-            width: 20px;
-            height: 20px;
-            fill: white;
-        }
-
-        #game-title {
-            font-size: 18px;
-            font-weight: 700;
-            color: white;
-            letter-spacing: 0.5px;
-        }
-
-        #game-subtitle {
-            font-size: 12px;
-            color: rgba(255,255,255,0.75);
-            margin-top: 1px;
-        }
-
         /* ===== 视觉区域 ===== */
         #visual-area {
             position: relative;
             width: 100%;
-            height: 380px;
+            height: 500px;
             background: linear-gradient(180deg, #1a2744 0%, #2c3e50 100%);
             overflow: hidden;
         }
@@ -151,6 +113,14 @@
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
         .flash { animation: flash 0.3s; }
         @keyframes flash { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+        @keyframes floatIn {
+            from { opacity: 0; transform: translateY(12px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .float-in {
+            animation: floatIn 0.35s ease-out both;
+        }
 
         /* ===== 文本区域 ===== */
         #text-area {
@@ -351,7 +321,7 @@
             height: 820px;
             overflow: hidden;
             position: sticky;
-            top: 24px;
+            top: 0;
             border: 2px solid rgba(30,58,138,0.08);
         }
 
@@ -464,6 +434,44 @@
             background: white;
         }
 
+        #ai-suggestions {
+            padding: 8px 12px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+
+        #ai-suggestions-label {
+            font-size: 11px;
+            color: #94A3B8;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+        }
+
+        #ai-suggestions-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .suggestion-chip {
+            font-size: 12px;
+            color: var(--navy);
+            background: #EEF2FF;
+            border: 1px solid rgba(30,58,138,0.15);
+            border-radius: 20px;
+            padding: 4px 12px;
+            cursor: pointer;
+            transition: background 0.15s, border-color 0.15s;
+            line-height: 1.5;
+        }
+
+        .suggestion-chip:hover {
+            background: #DBEAFE;
+            border-color: rgba(30,58,138,0.35);
+        }
+
         #ai-input {
             flex: 1;
             border: 1.5px solid var(--border);
@@ -527,8 +535,8 @@
         }
 
         @media (max-width: 640px) {
-            body { padding: 12px 8px; }
-            #visual-area { height: 260px; }
+            body { padding: 0; }
+            #visual-area { height: 340px; }
             #text-area { padding: 20px 18px 16px; }
             #choices { padding: 0 18px 20px; }
             #story-content { font-size: 15px; }
@@ -545,16 +553,6 @@
     <div id="page-wrapper">
         <div id="game-container">
             <!-- 顶部标题栏 -->
-            <div id="game-header">
-                <div id="game-header-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 4l5 2.18V11c0 3.5-2.33 6.79-5 7.93-2.67-1.14-5-4.43-5-7.93V7.18L12 5z"/></svg>
-                </div>
-                <div>
-                    <div id="game-title">普法情景游戏</div>
-                    <div id="game-subtitle">学法·知法·守法</div>
-                </div>
-            </div>
-
             <!-- 视觉区域（背景+角色） -->
             <div id="visual-area">
                 <img id="background" src="" alt="背景场景" style="display: none;">
@@ -590,6 +588,10 @@
                 <div id="ai-status-dot" title="在线"></div>
             </div>
             <div id="ai-messages"></div>
+            <div id="ai-suggestions">
+                <div id="ai-suggestions-label">你可能想问</div>
+                <div id="ai-suggestions-chips"></div>
+            </div>
             <div id="ai-input-area">
                 <textarea id="ai-input" placeholder="问灵灵任何问题..." rows="2" aria-label="向灵灵提问"></textarea>
                 <button id="ai-send" aria-label="发送消息">发送</button>
@@ -618,8 +620,9 @@
             // 副标题
             subtitle: "你的守护精灵",
 
-            // API Proxy (Cloudflare Worker)
-            apiBase: "https://ai-api-proxy.liyuelin501.workers.dev",
+            // 硅基流动 API
+            apiBase: "https://api.siliconflow.cn/v1/chat/completions",
+            apiKey: "sk-dzzhzvawwfvnxsgvlgqobshghylhptadvszbdqzhcolcynrz",
             model: "Qwen/Qwen3.5-397B-A17B",
 
             // 角色系统提示词（修改此处调整助手的说话风格和人格）
@@ -655,7 +658,7 @@
         // 初始化游戏
         function initGame() {
             // 加载Ink故事JSON文件
-            fetch('story.json')
+            fetch('story.json?v=' + new Date().getTime())
                 .then(response => response.json())
                 .then(storyContent => {
                     story = new inkjs.Story(storyContent);
@@ -696,6 +699,7 @@
             const choices = story.currentChoices.length > 0 ? story.currentChoices : null;
             if (allText.trim()) {
                 displayText(beats, choices);
+                updateSuggestions();
             } else if (choices) {
                 displayChoices(choices);
             } else {
@@ -857,7 +861,17 @@
             if (currentParagraphIndex < pendingParagraphs.length) {
                 const beat = pendingParagraphs[currentParagraphIndex];
 
-                // 先应用该 beat 的视觉 tags（背景、角色、滤镜等）
+                // 有角色 tag 时先清空所有角色图层，防止上一场景角色残留
+                const hasCharTag = beat.tags && beat.tags.some(t => /^char_(left|center|right)\s*:/.test(t));
+                if (hasCharTag) {
+                    ['left', 'center', 'right'].forEach(pos => {
+                        const c = document.getElementById('char-' + pos);
+                        c.style.display = 'none';
+                        c.querySelector('img').src = '';
+                    });
+                }
+
+                // 应用该 beat 的视觉 tags（背景、角色、滤镜等）
                 if (beat.tags && beat.tags.length > 0) {
                     processTags(beat.tags);
                 }
@@ -865,9 +879,11 @@
                 if (beat.html) {
                     const wrapper = document.createElement('div');
                     wrapper.innerHTML = beat.html;
-                    // 将子节点逐一追加
+                    // 将子节点逐一追加，并加浮动入场动画
                     while (wrapper.firstChild) {
-                        content.appendChild(wrapper.firstChild);
+                        const node = wrapper.firstChild;
+                        if (node.nodeType === 1) node.classList.add('float-in');
+                        content.appendChild(node);
                     }
 
                     // 重新绑定提示框点击事件（新追加的节点）
@@ -1169,7 +1185,8 @@
                 const res = await fetch(AI_CONFIG.apiBase, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${AI_CONFIG.apiKey}`
                     },
                     body: JSON.stringify({
                         model: AI_CONFIG.model,
@@ -1189,8 +1206,9 @@
                 const decoder = new TextDecoder();
                 let fullText = "";
 
-                typingEl.className = 'ai-msg assistant';
-                typingEl.textContent = "";
+                typingEl.className = 'ai-msg assistant typing';
+                typingEl.textContent = "灵灵正在思考...";
+                let hasContent = false;
 
                 while (true) {
                     const { done, value } = await reader.read();
@@ -1204,8 +1222,16 @@
                         if (data === '[DONE]') break;
                         try {
                             const json = JSON.parse(data);
-                            const delta = json.choices?.[0]?.delta?.content || "";
-                            fullText += delta;
+                            const delta = json.choices?.[0]?.delta;
+                            // 跳过 thinking 阶段（reasoning_content），只取 content
+                            const piece = delta?.content;
+                            if (!piece) continue;
+                            if (!hasContent) {
+                                hasContent = true;
+                                typingEl.className = 'ai-msg assistant';
+                                typingEl.textContent = "";
+                            }
+                            fullText += piece;
                             if (typeof marked !== 'undefined') {
                                 typingEl.innerHTML = marked.parse(fullText);
                             } else {
@@ -1222,6 +1248,12 @@
                 chatHistory.push({ role: "assistant", content: fullText });
                 if (chatHistory.length > 20) chatHistory.splice(0, 2);
 
+                // 如果全程没有 content（纯 thinking 或空响应）
+                if (!hasContent) {
+                    typingEl.className = 'ai-msg assistant';
+                    typingEl.textContent = "灵灵没有回应，请稍后再试。";
+                }
+
             } catch (err) {
                 typingEl.className = 'ai-msg assistant';
                 typingEl.textContent = `出错了：${err.message}。请检查网络连接或稍后再试。`;
@@ -1230,6 +1262,51 @@
             sendBtn.disabled = false;
             input.disabled = false;
             input.focus();
+        }
+
+        // 根据当前剧情生成推荐问题
+        async function updateSuggestions() {
+            const chipsEl = document.getElementById('ai-suggestions-chips');
+            if (!gameState.recentText.length) return;
+
+            chipsEl.innerHTML = '<span style="font-size:12px;color:#CBD5E1">生成中...</span>';
+
+            const context = gameState.recentText.join('\n');
+            const prompt = `根据以下故事情节，生成3个小朋友可能想问的简短问题（每个问题不超过18个字，只输出问题本身，每行一个，不加序号或标点前缀）：\n"${context}"`;
+
+            try {
+                const res = await fetch(AI_CONFIG.apiBase, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${AI_CONFIG.apiKey}`
+                    },
+                    body: JSON.stringify({
+                        model: AI_CONFIG.model,
+                        messages: [{ role: "user", content: prompt }],
+                        max_tokens: 120,
+                        temperature: 0.8,
+                        enable_thinking: false
+                    })
+                });
+                if (!res.ok) throw new Error();
+                const json = await res.json();
+                const raw = json.choices?.[0]?.message?.content || "";
+                const questions = raw.split('\n').map(q => q.trim()).filter(q => q.length > 2 && q.length <= 30).slice(0, 3);
+                chipsEl.innerHTML = '';
+                questions.forEach(q => {
+                    const chip = document.createElement('button');
+                    chip.className = 'suggestion-chip';
+                    chip.textContent = q;
+                    chip.addEventListener('click', () => {
+                        document.getElementById('ai-input').value = q;
+                        document.getElementById('ai-send').click();
+                    });
+                    chipsEl.appendChild(chip);
+                });
+            } catch(e) {
+                chipsEl.innerHTML = '';
+            }
         }
 
         function appendMessage(role, text) {
