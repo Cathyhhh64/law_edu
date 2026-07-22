@@ -1,0 +1,1362 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>普法情景游戏</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;500;600;700&family=Comic+Neue:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        /* ===== CSS 变量 ===== */
+        :root {
+            --navy:      #1E3A8A;
+            --navy-dark: #162d6e;
+            --navy-light:#2563EB;
+            --gold:      #B45309;
+            --gold-light:#F59E0B;
+            --bg:        #F0F4FF;
+            --surface:   #FFFFFF;
+            --text:      #0F172A;
+            --text-muted:#475569;
+            --border:    #CBD5E1;
+            --radius-lg: 20px;
+            --radius-md: 12px;
+            --radius-sm: 8px;
+            --shadow-card: 0 8px 32px rgba(30,58,138,0.12);
+            --shadow-hover: 0 16px 48px rgba(30,58,138,0.2);
+            --transition: 200ms ease;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: "Baloo 2", "Microsoft YaHei", "微软雅黑", "PingFang SC", Arial, sans-serif;
+            background: var(--bg);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 0;
+        }
+
+        /* ===== 页面布局 ===== */
+        #page-wrapper {
+            display: flex;
+            flex-direction: row;
+            gap: 20px;
+            align-items: flex-start;
+            width: 100%;
+            max-width: 1300px;
+            margin: 0 auto;
+        }
+
+        /* ===== 游戏主容器 ===== */
+        #game-container {
+            flex: 1;
+            min-width: 0;
+            max-width: 860px;
+            background: var(--surface);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-card);
+            overflow: hidden;
+            border: 2px solid rgba(30,58,138,0.08);
+        }
+
+        /* ===== 顶部标题栏 ===== */
+        /* ===== 视觉区域 ===== */
+        #visual-area {
+            position: relative;
+            width: 100%;
+            height: 500px;
+            background: linear-gradient(180deg, #1a2744 0%, #2c3e50 100%);
+            overflow: hidden;
+        }
+
+        #background {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            object-fit: cover;
+            transition: opacity 0.5s ease;
+        }
+
+        #background.darken  { opacity: 0.5; }
+        #background.brighten { filter: brightness(1.3); }
+        #background.grayscale { filter: grayscale(100%); }
+        #background.blur    { filter: blur(5px); }
+
+        /* 角色层 */
+        .character-layer {
+            position: absolute;
+            bottom: 0;
+            height: 100%;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+
+        .character-layer img { max-height: 90%; object-fit: contain; }
+        #char-left   { left: 30%; }
+        #char-center { left: 50%; transform: translateX(-50%); }
+        #char-right  { right: 30%; }
+
+        /* 特效 */
+        .shake { animation: shake 0.5s; }
+        @keyframes shake {
+            0%,100% { transform: translateX(0); }
+            10%,30%,50%,70%,90% { transform: translateX(-10px); }
+            20%,40%,60%,80%     { transform: translateX(10px); }
+        }
+        .fade-in { animation: fadeIn 1s; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        .flash { animation: flash 0.3s; }
+        @keyframes flash { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+
+        @keyframes floatIn {
+            from { opacity: 0; transform: translateY(12px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .float-in {
+            animation: floatIn 0.35s ease-out both;
+        }
+
+        /* ===== 文本区域 ===== */
+        #text-area {
+            padding: 28px 32px 24px;
+            min-height: 220px;
+            max-height: 380px;
+            overflow-y: auto;
+            background: var(--surface);
+            border-top: 4px solid var(--navy);
+            transition: border-color 0.3s ease;
+            cursor: default;
+        }
+
+        #text-area.has-more { cursor: pointer; }
+
+        /* 情绪边框 */
+        #text-area.mood-calm    { border-top-color: #3B82F6; }
+        #text-area.mood-safe    { border-top-color: #10B981; }
+        #text-area.mood-tense   { border-top-color: #F59E0B; }
+        #text-area.mood-danger  { border-top-color: #EF4444; }
+        #text-area.mood-sad     { border-top-color: #94A3B8; }
+        #text-area.mood-happy   { border-top-color: #06B6D4; }
+        #text-area.mood-hopeful { border-top-color: #8B5CF6; }
+
+        #story-content {
+            font-size: 17px;
+            line-height: 1.85;
+            color: var(--text);
+            margin-bottom: 20px;
+            font-family: "Comic Neue", "Microsoft YaHei", sans-serif;
+            font-weight: 400;
+        }
+
+        #story-content p { margin-bottom: 14px; }
+        #story-content h3 { font-family: "Baloo 2", sans-serif; }
+
+        /* 继续提示 */
+        #continue-indicator {
+            text-align: center;
+            color: var(--navy-light);
+            font-size: 13px;
+            font-weight: 600;
+            padding: 8px 0 2px;
+            animation: pulse 1.5s ease-in-out infinite;
+            user-select: none;
+            letter-spacing: 0.5px;
+        }
+
+        @keyframes pulse {
+            0%,100% { opacity: 0.35; }
+            50%      { opacity: 1; }
+        }
+
+        /* ===== 选项按钮 ===== */
+        #choices {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            padding: 0 32px 28px;
+        }
+
+        .choice-button {
+            background: var(--surface);
+            color: var(--navy);
+            border: 2px solid var(--navy);
+            padding: 14px 22px;
+            font-size: 15px;
+            font-family: "Baloo 2", "Microsoft YaHei", sans-serif;
+            font-weight: 600;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            text-align: left;
+            transition: background var(--transition), color var(--transition),
+                        box-shadow var(--transition), transform var(--transition);
+            box-shadow: 0 2px 8px rgba(30,58,138,0.08);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .choice-button::before {
+            content: '';
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--navy);
+            flex-shrink: 0;
+            transition: background var(--transition);
+        }
+
+        .choice-button:hover {
+            background: var(--navy);
+            color: white;
+            box-shadow: 0 6px 20px rgba(30,58,138,0.25);
+            transform: translateY(-2px);
+        }
+
+        .choice-button:hover::before { background: var(--gold-light); }
+        .choice-button:active { transform: translateY(0); }
+
+        /* ===== 加载 ===== */
+        #loading {
+            text-align: center;
+            padding: 48px 32px;
+            font-size: 16px;
+            color: var(--text-muted);
+            font-family: "Baloo 2", sans-serif;
+        }
+
+        /* ===== 游戏结束 ===== */
+        .game-end {
+            text-align: center;
+            padding: 40px 32px;
+        }
+
+        .game-end h2 {
+            color: var(--navy);
+            font-family: "Baloo 2", sans-serif;
+            font-size: 22px;
+            margin-bottom: 12px;
+        }
+
+        .game-end p { color: var(--text-muted); margin-bottom: 20px; }
+
+        /* ===== 可折叠提示框 ===== */
+        .collapsible-hint {
+            margin: 14px 0;
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            border: 1.5px solid var(--border);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+
+        .hint-header {
+            padding: 11px 16px;
+            background: linear-gradient(135deg, var(--navy) 0%, var(--navy-light) 100%);
+            color: white;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 700;
+            font-family: "Baloo 2", sans-serif;
+            font-size: 14px;
+            transition: filter var(--transition);
+        }
+
+        .hint-header:hover { filter: brightness(1.1); }
+
+        .hint-header.tip-header {
+            background: linear-gradient(135deg, #059669 0%, #10B981 100%);
+        }
+
+        .hint-header.legal-header {
+            background: linear-gradient(135deg, #1D4ED8 0%, #3B82F6 100%);
+        }
+
+        .hint-header.recap-header {
+            background: linear-gradient(135deg, #D97706 0%, #F59E0B 100%);
+        }
+
+        .hint-icon {
+            font-size: 14px;
+            transition: transform 0.25s ease;
+        }
+
+        .hint-icon.expanded { transform: rotate(180deg); }
+
+        .hint-content {
+            padding: 14px 16px;
+            background: #F8FAFF;
+            display: none;
+            line-height: 1.8;
+            font-size: 14px;
+            color: var(--text);
+            font-family: "Comic Neue", "Microsoft YaHei", sans-serif;
+        }
+
+        .hint-content.show { display: block; }
+        .hint-content ul { margin: 8px 0; padding-left: 20px; }
+        .hint-content li { margin: 4px 0; }
+
+        /* ===== 滚动条 ===== */
+        #text-area::-webkit-scrollbar { width: 6px; }
+        #text-area::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 3px; }
+        #text-area::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+        #text-area::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+
+        /* ===== AI 侧边栏 ===== */
+        #ai-sidebar {
+            width: 320px;
+            flex-shrink: 0;
+            background: var(--surface);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-card);
+            display: flex;
+            flex-direction: column;
+            height: 820px;
+            overflow: hidden;
+            position: sticky;
+            top: 0;
+            border: 2px solid rgba(30,58,138,0.08);
+        }
+
+        #ai-header {
+            padding: 16px 20px;
+            background: linear-gradient(135deg, var(--navy) 0%, var(--navy-light) 100%);
+            color: white;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-shrink: 0;
+        }
+
+        #ai-avatar-wrap {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            flex-shrink: 0;
+            border: 2px solid rgba(255,255,255,0.35);
+        }
+
+        #ai-title-group { display: flex; flex-direction: column; }
+
+        #ai-name {
+            font-size: 17px;
+            font-weight: 700;
+            font-family: "Baloo 2", sans-serif;
+        }
+
+        #ai-subtitle {
+            font-size: 11px;
+            opacity: 0.8;
+            margin-top: 1px;
+        }
+
+        /* 在线状态点 */
+        #ai-status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #4ADE80;
+            margin-left: auto;
+            flex-shrink: 0;
+            box-shadow: 0 0 6px #4ADE80;
+            animation: statusPulse 2s ease-in-out infinite;
+        }
+
+        @keyframes statusPulse {
+            0%,100% { opacity: 1; }
+            50%      { opacity: 0.5; }
+        }
+
+        #ai-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            background: #F0F4FF;
+        }
+
+        .ai-msg {
+            max-width: 88%;
+            padding: 10px 14px;
+            border-radius: 14px;
+            font-size: 13.5px;
+            line-height: 1.7;
+            word-break: break-word;
+            white-space: pre-wrap;
+            font-family: "Comic Neue", "Microsoft YaHei", sans-serif;
+        }
+
+        .ai-msg.assistant {
+            background: white;
+            border: 1.5px solid #E2E8F0;
+            align-self: flex-start;
+            border-bottom-left-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+
+        .ai-msg.user {
+            background: linear-gradient(135deg, var(--navy) 0%, var(--navy-light) 100%);
+            color: white;
+            align-self: flex-end;
+            border-bottom-right-radius: 4px;
+            box-shadow: 0 2px 8px rgba(30,58,138,0.2);
+        }
+
+        .ai-msg.typing {
+            background: white;
+            border: 1.5px solid #E2E8F0;
+            align-self: flex-start;
+            border-bottom-left-radius: 4px;
+            color: #94A3B8;
+            font-style: italic;
+        }
+
+        #ai-input-area {
+            padding: 12px;
+            border-top: 1.5px solid #E2E8F0;
+            display: flex;
+            gap: 8px;
+            flex-shrink: 0;
+            background: white;
+        }
+
+        #ai-suggestions {
+            padding: 8px 12px 0;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+
+        #ai-suggestions-label {
+            font-size: 11px;
+            color: #94A3B8;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+        }
+
+        #ai-suggestions-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .suggestion-chip {
+            font-size: 12px;
+            color: var(--navy);
+            background: #EEF2FF;
+            border: 1px solid rgba(30,58,138,0.15);
+            border-radius: 20px;
+            padding: 4px 12px;
+            cursor: pointer;
+            transition: background 0.15s, border-color 0.15s;
+            line-height: 1.5;
+        }
+
+        .suggestion-chip:hover {
+            background: #DBEAFE;
+            border-color: rgba(30,58,138,0.35);
+        }
+
+        #ai-input {
+            flex: 1;
+            border: 1.5px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 8px 12px;
+            font-size: 13.5px;
+            font-family: "Comic Neue", "Microsoft YaHei", sans-serif;
+            resize: none;
+            outline: none;
+            transition: border-color var(--transition);
+            color: var(--text);
+            background: #F8FAFF;
+        }
+
+        #ai-input:focus { border-color: var(--navy-light); background: white; }
+
+        #ai-send {
+            background: linear-gradient(135deg, var(--navy) 0%, var(--navy-light) 100%);
+            color: white;
+            border: none;
+            border-radius: var(--radius-sm);
+            padding: 0 16px;
+            font-size: 13.5px;
+            font-family: "Baloo 2", sans-serif;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity var(--transition), transform var(--transition);
+            white-space: nowrap;
+        }
+
+        #ai-send:hover { opacity: 0.88; transform: translateY(-1px); }
+        #ai-send:active { transform: translateY(0); }
+        #ai-send:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+
+        /* Markdown 内容样式 */
+        .ai-msg.assistant p { margin: 0 0 7px; }
+        .ai-msg.assistant p:last-child { margin-bottom: 0; }
+        .ai-msg.assistant ul, .ai-msg.assistant ol { margin: 4px 0 7px; padding-left: 18px; }
+        .ai-msg.assistant li { margin: 2px 0; }
+        .ai-msg.assistant strong { font-weight: 700; color: var(--navy); }
+        .ai-msg.assistant h1, .ai-msg.assistant h2, .ai-msg.assistant h3 {
+            font-size: 14px; font-weight: 700; margin: 8px 0 4px;
+            font-family: "Baloo 2", sans-serif; color: var(--navy);
+        }
+        .ai-msg.assistant code {
+            background: #EEF2FF; padding: 1px 5px; border-radius: 3px; font-size: 12px;
+        }
+        .ai-msg.assistant blockquote {
+            border-left: 3px solid var(--navy-light); margin: 6px 0;
+            padding-left: 10px; color: var(--text-muted);
+        }
+
+        #ai-messages::-webkit-scrollbar { width: 5px; }
+        #ai-messages::-webkit-scrollbar-track { background: transparent; }
+        #ai-messages::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 3px; }
+
+        /* ===== 响应式 ===== */
+        @media (max-width: 1100px) {
+            #page-wrapper { flex-direction: column; align-items: center; }
+            #ai-sidebar { width: 100%; max-width: 860px; height: 420px; position: static; }
+        }
+
+        @media (max-width: 640px) {
+            body { padding: 0; }
+            #visual-area { height: 340px; }
+            #text-area { padding: 20px 18px 16px; }
+            #choices { padding: 0 18px 20px; }
+            #story-content { font-size: 15px; }
+            .choice-button { font-size: 14px; padding: 12px 16px; }
+            #game-title { font-size: 15px; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+        }
+    </style>
+</head>
+<body>
+    <div id="page-wrapper">
+        <div id="game-container">
+            <!-- 顶部标题栏 -->
+            <!-- 视觉区域（背景+角色） -->
+            <div id="visual-area">
+                <img id="background" src="" alt="背景场景" style="display: none;">
+                <div id="char-left" class="character-layer" style="display: none;">
+                    <img src="" alt="左侧角色">
+                </div>
+                <div id="char-center" class="character-layer" style="display: none;">
+                    <img src="" alt="中央角色">
+                </div>
+                <div id="char-right" class="character-layer" style="display: none;">
+                    <img src="" alt="右侧角色">
+                </div>
+            </div>
+
+            <!-- 文本区域 -->
+            <div id="text-area">
+                <div id="loading">正在加载游戏...</div>
+                <div id="story-content" style="display: none;"></div>
+                <div id="choices"></div>
+            </div>
+        </div>
+
+        <!-- 右栏：AI助手侧边栏 -->
+        <div id="ai-sidebar">
+            <div id="ai-header">
+                <div id="ai-avatar-wrap">
+                    <span id="ai-avatar">✨</span>
+                </div>
+                <div id="ai-title-group">
+                    <span id="ai-name">灵灵</span>
+                    <span id="ai-subtitle">你的守护精灵</span>
+                </div>
+                <div id="ai-status-dot" title="在线"></div>
+            </div>
+            <div id="ai-messages"></div>
+            <div id="ai-suggestions">
+                <div id="ai-suggestions-label">你可能想问</div>
+                <div id="ai-suggestions-chips"></div>
+            </div>
+            <div id="ai-input-area">
+                <textarea id="ai-input" placeholder="问灵灵任何问题..." rows="2" aria-label="向灵灵提问"></textarea>
+                <button id="ai-send" aria-label="发送消息">发送</button>
+            </div>
+        </div>
+
+    </div><!-- /#page-wrapper -->
+
+    <!-- Ink Runtime -->
+    <script src="ink.js"></script>
+    <!-- Markdown 渲染 -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+
+    <!-- 游戏逻辑 -->
+    <script>
+        // ============================================================
+        // AI 小助手配置（如需修改角色设定，在此处编辑）
+        // ============================================================
+        const AI_CONFIG = {
+            // 助手名字（显示在侧边栏顶部）
+            name: "灵灵",
+
+            // 头像（emoji 或图片路径，如 "graphics/characters/灵灵.png"）
+            avatar: "✨",
+
+            // 副标题
+            subtitle: "你的守护精灵",
+
+            // 硅基流动 API
+            apiBase: "https://api.siliconflow.cn/v1/chat/completions",
+            apiKey: "sk-dzzhzvawwfvnxsgvlgqobshghylhptadvszbdqzhcolcynrz",
+            model: "Qwen/Qwen3.5-397B-A17B",
+
+            // 角色系统提示词（修改此处调整助手的说话风格和人格）
+            systemPromptBase: `你是"灵灵"，一个温暖、善良的守护精灵，专门陪伴小朋友学习法律知识和自我保护。
+
+你的说话风格：
+- 用简单、友善的语气，像一个温暖的大姐姐或大哥哥
+- 解释法律时用小朋友能理解的方式，避免太多法律术语
+- 遇到敏感话题时，先给予情感支持，再给出实际建议
+- 鼓励小朋友勇于求助，告诉可信任的大人
+
+当引用法律条文时：
+- 必须准确标注法律名称和条款编号
+- 在回答末尾用"法律依据："列出引用来源
+- 只引用提供给你的条文原文，不要编造条款`
+        };
+
+        // ============================================================
+        // 游戏状态（由游戏逻辑自动更新，AI 问答时自动注入上下文）
+        // ============================================================
+        const gameState = {
+            currentBg: "",        // 当前背景场景
+            currentMood: "",      // 当前情绪氛围
+            silenceCount: null,      // 沉默次数
+            currentAct: null,        // 当前幕数
+            assaultOccurred: null,   // 是否发生侵害
+            recentText: [],       // 最近3段故事文本（滚动更新）
+            lastChoice: ""        // 玩家最后一次做出的选择
+        };
+
+        let story;
+
+        // 初始化游戏
+        function initGame() {
+            // 加载Ink故事JSON文件
+            fetch('story.json?v=' + new Date().getTime())
+                .then(response => response.json())
+                .then(storyContent => {
+                    story = new inkjs.Story(storyContent);
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('story-content').style.display = 'block';
+                    continueStory();
+                })
+                .catch(error => {
+                    document.getElementById('loading').innerHTML =
+                        '加载失败！请确保story.json文件存在。<br><br>错误信息: ' + error;
+                });
+        }
+
+        // 继续故事
+        function continueStory() {
+            const beats = [];
+
+            // 每次 Continue() 是一个 beat，保留各自的 tags
+            while (story.canContinue) {
+                const text = story.Continue();
+                beats.push({ text, tags: [...story.currentTags] });
+            }
+
+            // 更新游戏状态供AI使用
+            const allText = beats.map(b => b.text).join('');
+            if (allText.trim()) {
+                gameState.recentText.push(allText.trim().slice(0, 200));
+                if (gameState.recentText.length > 3) gameState.recentText.shift();
+            }
+            // 尝试读取 Ink 变量
+            try {
+                gameState.silenceCount = story.variablesState["silence_count"];
+                gameState.currentAct = story.variablesState["current_act"];
+                gameState.assaultOccurred = story.variablesState["assault_occurred"];
+            } catch(e) {}
+
+            // 显示文本（逐段点击模式，选项在所有段落显示完后出现）
+            const choices = story.currentChoices.length > 0 ? story.currentChoices : null;
+            if (allText.trim()) {
+                displayText(beats, choices);
+                updateSuggestions();
+            } else if (choices) {
+                displayChoices(choices);
+            } else {
+                displayGameEnd();
+            }
+        }
+
+        // 处理Tags
+        function processTags(tags) {
+            tags.forEach(tag => {
+                const parts = tag.split(':').map(s => s.trim());
+                if (parts.length !== 2) return;
+
+                const tagName = parts[0];
+                const tagValue = parts[1];
+
+                switch (tagName) {
+                    case 'bg':
+                        updateBackground(tagValue);
+                        break;
+                    case 'char_left':
+                        updateCharacter('left', tagValue);
+                        break;
+                    case 'char_right':
+                        updateCharacter('right', tagValue);
+                        break;
+                    case 'char_center':
+                        updateCharacter('center', tagValue);
+                        break;
+                    case 'mood':
+                        updateMood(tagValue);
+                        break;
+                    case 'effect':
+                        triggerEffect(tagValue);
+                        break;
+                    case 'bg_filter':
+                        applyBackgroundFilter(tagValue);
+                        break;
+                }
+            });
+        }
+
+        // 更新背景
+        function updateBackground(filename) {
+            const bg = document.getElementById('background');
+
+            if (filename === 'none') {
+                bg.style.display = 'none';
+            } else {
+                gameState.currentBg = filename;
+                const timestamp = new Date().getTime();
+                bg.src = 'graphics/background/' + filename + '?v=' + timestamp;
+                bg.style.display = 'block';
+                bg.classList.add('fade-in');
+                setTimeout(() => bg.classList.remove('fade-in'), 1000);
+            }
+        }
+
+        // 更新角色
+        function updateCharacter(position, filename) {
+            const container = document.getElementById('char-' + position);
+            const img = container.querySelector('img');
+
+            if (filename === 'none') {
+                container.style.display = 'none';
+            } else {
+                // Add cache-busting timestamp
+                const timestamp = new Date().getTime();
+                img.src = 'graphics/characters/' + filename + '?v=' + timestamp;
+                container.style.display = 'flex';
+                container.classList.add('fade-in');
+                setTimeout(() => container.classList.remove('fade-in'), 300);
+            }
+        }
+
+        // 更新情绪氛围
+        function updateMood(mood) {
+            const textArea = document.getElementById('text-area');
+
+            // 移除所有mood类
+            textArea.className = textArea.className.replace(/mood-\w+/g, '');
+
+            // 添加新mood类
+            if (mood && mood !== 'none') {
+                gameState.currentMood = mood;
+                textArea.classList.add('mood-' + mood);
+            }
+        }
+
+        // 触发特效
+        function triggerEffect(effect) {
+            const visualArea = document.getElementById('visual-area');
+
+            switch (effect) {
+                case 'shake':
+                    visualArea.classList.add('shake');
+                    setTimeout(() => visualArea.classList.remove('shake'), 500);
+                    break;
+                case 'flash':
+                    visualArea.classList.add('flash');
+                    setTimeout(() => visualArea.classList.remove('flash'), 300);
+                    break;
+                case 'fade':
+                    const bg = document.getElementById('background');
+                    bg.classList.add('fade-in');
+                    setTimeout(() => bg.classList.remove('fade-in'), 1000);
+                    break;
+            }
+        }
+
+        // 应用背景滤镜
+        function applyBackgroundFilter(filter) {
+            const bg = document.getElementById('background');
+
+            // 移除所有滤镜类
+            bg.classList.remove('darken', 'brighten', 'grayscale', 'blur');
+
+            // 应用新滤镜
+            if (filter && filter !== 'none') {
+                bg.classList.add(filter);
+            }
+        }
+
+        // 逐段点击显示状态
+        let pendingParagraphs = [];  // 待显示的段落HTML数组
+        let currentParagraphIndex = 0;
+        let pendingChoices = null;
+
+        function setupClickReveal(paragraphsHtml, choices) {
+            pendingParagraphs = paragraphsHtml;
+            currentParagraphIndex = 0;
+            pendingChoices = choices;
+
+            const content = document.getElementById('story-content');
+            content.innerHTML = '';
+            document.getElementById('choices').innerHTML = '';
+
+            const textArea = document.getElementById('text-area');
+            textArea.classList.add('has-more');
+            textArea.addEventListener('click', onTextAreaClick);
+
+            showNextParagraph();
+        }
+
+        function onTextAreaClick() {
+            if (currentParagraphIndex < pendingParagraphs.length) {
+                showNextParagraph();
+            }
+        }
+
+        function showNextParagraph() {
+            const content = document.getElementById('story-content');
+            const textArea = document.getElementById('text-area');
+
+            // 移除旧的继续提示
+            const old = document.getElementById('continue-indicator');
+            if (old) old.remove();
+
+            if (currentParagraphIndex < pendingParagraphs.length) {
+                const beat = pendingParagraphs[currentParagraphIndex];
+
+                // 有角色 tag 时先清空所有角色图层，防止上一场景角色残留
+                const hasCharTag = beat.tags && beat.tags.some(t => /^char_(left|center|right)\s*:/.test(t));
+                if (hasCharTag) {
+                    ['left', 'center', 'right'].forEach(pos => {
+                        const c = document.getElementById('char-' + pos);
+                        c.style.display = 'none';
+                        c.querySelector('img').src = '';
+                    });
+                }
+
+                // 应用该 beat 的视觉 tags（背景、角色、滤镜等）
+                if (beat.tags && beat.tags.length > 0) {
+                    processTags(beat.tags);
+                }
+
+                if (beat.html) {
+                    const wrapper = document.createElement('div');
+                    wrapper.innerHTML = beat.html;
+                    // 将子节点逐一追加，并加浮动入场动画
+                    while (wrapper.firstChild) {
+                        const node = wrapper.firstChild;
+                        if (node.nodeType === 1) node.classList.add('float-in');
+                        content.appendChild(node);
+                    }
+
+                    // 重新绑定提示框点击事件（新追加的节点）
+                    content.querySelectorAll('.hint-header').forEach(header => {
+                        if (!header.dataset.bound) {
+                            header.dataset.bound = '1';
+                            header.addEventListener('click', function(e) {
+                                e.stopPropagation();
+                                const hintContent = this.nextElementSibling;
+                                const icon = this.querySelector('.hint-icon');
+                                hintContent.classList.toggle('show');
+                                icon.classList.toggle('expanded');
+                            });
+                        }
+                    });
+                }
+
+                currentParagraphIndex++;
+                textArea.scrollTop = textArea.scrollHeight;
+            }
+
+            if (currentParagraphIndex < pendingParagraphs.length) {
+                // 还有更多段落，显示继续提示
+                const indicator = document.createElement('div');
+                indicator.id = 'continue-indicator';
+                indicator.textContent = '▼ 点击继续';
+                content.appendChild(indicator);
+            } else {
+                // 所有段落显示完毕
+                textArea.classList.remove('has-more');
+                textArea.removeEventListener('click', onTextAreaClick);
+
+                if (pendingChoices && pendingChoices.length > 0) {
+                    displayChoices(pendingChoices);
+                } else {
+                    displayGameEnd();
+                }
+            }
+        }
+
+        // 显示文本（返回段落HTML数组，不直接渲染）
+        function buildParagraphsHtml(text) {
+            const paragraphs = text.split('\n').filter(p => p.trim());
+            const result = [];  // 每个元素是一段HTML字符串
+            let inHint = false;
+            let hintHasSeparator = false;
+            let hintType = '';
+            let hintContent = '';
+            let sawOpeningSeparator = false;
+
+            function flush(html) {
+                if (html) result.push(html);
+            }
+
+            paragraphs.forEach((p, index) => {
+                const trimmedP = p.trim();
+
+                if (trimmedP.startsWith('════')) {
+                    if (inHint && hintHasSeparator && hintContent) {
+                        flush(createCollapsibleHint(hintType, hintContent));
+                        inHint = false; hintHasSeparator = false; hintContent = ''; hintType = '';
+                    } else {
+                        sawOpeningSeparator = true;
+                    }
+                    return;
+                }
+
+                if (trimmedP.startsWith('💡')) {
+                    if (inHint && hintContent) flush(createCollapsibleHint(hintType, hintContent));
+                    let hintText = trimmedP.replace('💡', '').trim().replace(/^提示[：:]?\s*/, '').trim();
+                    inHint = true; hintType = 'tip'; hintHasSeparator = sawOpeningSeparator;
+                    hintContent = hintText ? `<p>${hintText}</p>` : '';
+                    sawOpeningSeparator = false;
+                    return;
+                }
+
+                if (trimmedP.includes('📖 法律小课堂')) {
+                    if (inHint && hintContent) flush(createCollapsibleHint(hintType, hintContent));
+                    const hintText = trimmedP.replace('📖 法律小课堂', '').replace(/[：:]\s*/, '').trim();
+                    inHint = true; hintType = 'legal'; hintHasSeparator = sawOpeningSeparator;
+                    hintContent = hintText ? `<p>${hintText}</p>` : '';
+                    sawOpeningSeparator = false;
+                    return;
+                }
+
+                if (trimmedP.includes('【结局复盘】')) {
+                    if (inHint && hintContent) { flush(createCollapsibleHint(hintType, hintContent)); inHint = false; hintContent = ''; }
+                    flush(`<h3 style="color: #FF9800; margin-top: 20px;">📋 ${trimmedP}</h3>`);
+                    sawOpeningSeparator = false;
+                    return;
+                }
+
+                if (trimmedP.includes('🌟法律知识复习')) {
+                    if (inHint && hintContent) { flush(createCollapsibleHint(hintType, hintContent)); inHint = false; hintContent = ''; }
+                    flush(`<h3 style="color: #2196F3; margin-top: 20px;">${trimmedP}</h3>`);
+                    sawOpeningSeparator = false;
+                    return;
+                }
+
+                sawOpeningSeparator = false;
+
+                if (inHint) {
+                    if (trimmedP.startsWith('•') || trimmedP.startsWith('✓') || trimmedP.startsWith('(')) {
+                        hintContent += `<p>${trimmedP}</p>`;
+                    } else if (!hintHasSeparator) {
+                        const nextLines = paragraphs.slice(index + 1);
+                        const hasMoreBullets = nextLines.some(line => {
+                            const l = line.trim();
+                            if (l.startsWith('•') || l.startsWith('✓')) return true;
+                            if (l.startsWith('💡') || l.includes('📖') || l.startsWith('════')) return false;
+                            return null;
+                        });
+                        if (hasMoreBullets) {
+                            hintContent += `<p>${trimmedP}</p>`;
+                        } else {
+                            flush(createCollapsibleHint(hintType, hintContent));
+                            inHint = false; hintContent = '';
+                            flush(`<p>${trimmedP}</p>`);
+                        }
+                    } else {
+                        hintContent += `<p>${trimmedP}</p>`;
+                    }
+                } else {
+                    flush(`<p>${trimmedP}</p>`);
+                }
+            });
+
+            if (inHint && hintContent) flush(createCollapsibleHint(hintType, hintContent));
+            return result;
+        }
+
+        // 将 beats 数组转为 { html, tags }[] 供逐段点击使用
+        function buildDisplayBeats(beats) {
+            const result = [];
+            beats.forEach(beat => {
+                const paragraphs = buildParagraphsHtml(beat.text);
+                if (paragraphs.length === 0) {
+                    // 无文本但有 tags（如纯场景切换 beat）
+                    if (beat.tags.length > 0) {
+                        result.push({ html: '', tags: beat.tags });
+                    }
+                    return;
+                }
+                // 第一个段落携带该 beat 的 tags，其余段落 tags 为空
+                paragraphs.forEach((html, i) => {
+                    result.push({ html, tags: i === 0 ? beat.tags : [] });
+                });
+            });
+            return result;
+        }
+
+        // 显示文本：转为逐段点击模式
+        function displayText(beats, choices) {
+            const displayBeats = buildDisplayBeats(beats);
+            setupClickReveal(displayBeats, choices || null);
+        }
+
+        // 创建可折叠提示框
+        function createCollapsibleHint(type, content) {
+            let typeClass, icon, headerText;
+
+            switch (type) {
+                case 'legal':
+                    typeClass = 'legal-header';
+                    icon = '📖';
+                    headerText = '法律小课堂';
+                    break;
+                case 'recap':
+                    typeClass = 'recap-header';
+                    icon = '📋';
+                    headerText = '结局复盘';
+                    break;
+                default: // 'tip'
+                    typeClass = 'tip-header';
+                    icon = '💡';
+                    headerText = '提示';
+            }
+
+            return `
+                <div class="collapsible-hint">
+                    <div class="hint-header ${typeClass}">
+                        <span>${icon} ${headerText}</span>
+                        <span class="hint-icon">▼</span>
+                    </div>
+                    <div class="hint-content">
+                        ${content}
+                    </div>
+                </div>
+            `;
+        }
+
+        // 显示选项
+        function displayChoices(choices) {
+            const choicesContainer = document.getElementById('choices');
+            choicesContainer.innerHTML = '';
+
+            choices.forEach((choice, index) => {
+                const button = document.createElement('button');
+                button.className = 'choice-button';
+                button.textContent = choice.text;
+                button.onclick = () => {
+                    gameState.lastChoice = choice.text;
+                    story.ChooseChoiceIndex(index);
+                    continueStory();
+                };
+                choicesContainer.appendChild(button);
+            });
+        }
+
+        // 显示游戏结束
+        function displayGameEnd() {
+            const choicesContainer = document.getElementById('choices');
+            choicesContainer.innerHTML = `
+                <div class="game-end">
+                    <h2>游戏结束</h2>
+                    <p>感谢你玩这个游戏。</p>
+                    <button class="choice-button" onclick="location.reload()">重新开始</button>
+                </div>
+            `;
+        }
+
+        // ===== 法律知识库 =====
+        let legalKnowledge = [];
+
+        async function loadLegalKnowledge() {
+            try {
+                const res = await fetch('legal_knowledge.json');
+                legalKnowledge = await res.json();
+            } catch (e) {
+                console.warn("法律知识库加载失败:", e);
+            }
+        }
+
+        function searchLegalKnowledge(query) {
+            if (!legalKnowledge.length) return [];
+            const q = query.toLowerCase();
+            const scored = legalKnowledge.map(item => {
+                let score = 0;
+                item.keywords.forEach(kw => {
+                    if (q.includes(kw)) score += 2;
+                });
+                if (q.includes(item.law)) score += 3;
+                const words = q.split(/[\s，。？！、]/);
+                words.forEach(w => {
+                    if (w.length > 1 && item.content.includes(w)) score += 1;
+                });
+                return { item, score };
+            });
+            return scored
+                .filter(s => s.score > 0)
+                .sort((a, b) => b.score - a.score)
+                .slice(0, 3)
+                .map(s => s.item);
+        }
+
+        // ===== AI 聊天 =====
+        const chatHistory = [];
+
+        function buildSystemPrompt(userQuery) {
+            const relatedLaws = searchLegalKnowledge(userQuery);
+            let lawContext = "";
+            if (relatedLaws.length > 0) {
+                lawContext = "\n\n【相关法律条文参考（请在回答中准确引用）】\n";
+                relatedLaws.forEach(law => {
+                    lawContext += `\n${law.law} ${law.article}：\n"${law.content}"\n`;
+                });
+            }
+
+            let stateContext = "\n\n【当前游戏状态（帮助你理解玩家的处境）】\n";
+            if (gameState.currentBg) stateContext += `- 当前场景：${gameState.currentBg}\n`;
+            if (gameState.currentMood) stateContext += `- 当前氛围：${gameState.currentMood}\n`;
+            if (gameState.currentAct !== null) stateContext += `- 当前幕数：第${gameState.currentAct}幕\n`;
+            if (gameState.silenceCount !== null) stateContext += `- 沉默次数：${gameState.silenceCount}\n`;
+            if (gameState.assaultOccurred !== null) stateContext += `- 是否发生侵害：${gameState.assaultOccurred ? '是' : '否'}\n`;
+            if (gameState.lastChoice) stateContext += `- 玩家最近选择：${gameState.lastChoice}\n`;
+            if (gameState.recentText.length > 0) {
+                stateContext += `- 最近剧情片段：\n"${gameState.recentText.join('\n...\n')}"\n`;
+            }
+
+            return AI_CONFIG.systemPromptBase + lawContext + stateContext;
+        }
+
+        async function sendToAI(userMessage) {
+            const sendBtn = document.getElementById('ai-send');
+            const input = document.getElementById('ai-input');
+            sendBtn.disabled = true;
+            input.disabled = true;
+
+            appendMessage('user', userMessage);
+            const typingEl = appendMessage('typing', '灵灵正在思考...');
+
+            const messages = [
+                { role: "system", content: buildSystemPrompt(userMessage) },
+                ...chatHistory,
+                { role: "user", content: userMessage }
+            ];
+
+            try {
+                const res = await fetch(AI_CONFIG.apiBase, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${AI_CONFIG.apiKey}`
+                    },
+                    body: JSON.stringify({
+                        model: AI_CONFIG.model,
+                        messages,
+                        stream: true,
+                        max_tokens: 2000,
+                        temperature: 0.7,
+                        enable_thinking: false
+                    })
+                });
+
+                if (!res.ok) {
+                    throw new Error(`API 错误: ${res.status}`);
+                }
+
+                const reader = res.body.getReader();
+                const decoder = new TextDecoder();
+                let fullText = "";
+
+                typingEl.className = 'ai-msg assistant typing';
+                typingEl.textContent = "灵灵正在思考...";
+                let hasContent = false;
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    const chunk = decoder.decode(value);
+                    const lines = chunk.split('\n').filter(l => l.startsWith('data: '));
+
+                    for (const line of lines) {
+                        const data = line.slice(6);
+                        if (data === '[DONE]') break;
+                        try {
+                            const json = JSON.parse(data);
+                            const delta = json.choices?.[0]?.delta;
+                            // 跳过 thinking 阶段（reasoning_content），只取 content
+                            const piece = delta?.content;
+                            if (!piece) continue;
+                            if (!hasContent) {
+                                hasContent = true;
+                                typingEl.className = 'ai-msg assistant';
+                                typingEl.textContent = "";
+                            }
+                            fullText += piece;
+                            if (typeof marked !== 'undefined') {
+                                typingEl.innerHTML = marked.parse(fullText);
+                            } else {
+                                typingEl.textContent = fullText;
+                            }
+                            const msgs = document.getElementById('ai-messages');
+                            const atBottom = msgs.scrollHeight - msgs.scrollTop - msgs.clientHeight < 60;
+                            if (atBottom) msgs.scrollTop = msgs.scrollHeight;
+                        } catch(e) {}
+                    }
+                }
+
+                chatHistory.push({ role: "user", content: userMessage });
+                chatHistory.push({ role: "assistant", content: fullText });
+                if (chatHistory.length > 20) chatHistory.splice(0, 2);
+
+                // 如果全程没有 content（纯 thinking 或空响应）
+                if (!hasContent) {
+                    typingEl.className = 'ai-msg assistant';
+                    typingEl.textContent = "灵灵没有回应，请稍后再试。";
+                }
+
+            } catch (err) {
+                typingEl.className = 'ai-msg assistant';
+                typingEl.textContent = `出错了：${err.message}。请检查网络连接或稍后再试。`;
+            }
+
+            sendBtn.disabled = false;
+            input.disabled = false;
+            input.focus();
+        }
+
+        // 根据当前剧情生成推荐问题
+        async function updateSuggestions() {
+            const chipsEl = document.getElementById('ai-suggestions-chips');
+            if (!gameState.recentText.length) return;
+
+            chipsEl.innerHTML = '<span style="font-size:12px;color:#CBD5E1">生成中...</span>';
+
+            const context = gameState.recentText.join('\n');
+            const prompt = `根据以下故事情节，生成3个小朋友可能想问的简短问题（每个问题不超过18个字，只输出问题本身，每行一个，不加序号或标点前缀）：\n"${context}"`;
+
+            try {
+                const res = await fetch(AI_CONFIG.apiBase, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${AI_CONFIG.apiKey}`
+                    },
+                    body: JSON.stringify({
+                        model: AI_CONFIG.model,
+                        messages: [{ role: "user", content: prompt }],
+                        max_tokens: 120,
+                        temperature: 0.8,
+                        enable_thinking: false
+                    })
+                });
+                if (!res.ok) throw new Error();
+                const json = await res.json();
+                const raw = json.choices?.[0]?.message?.content || "";
+                const questions = raw.split('\n').map(q => q.trim()).filter(q => q.length > 2 && q.length <= 30).slice(0, 3);
+                chipsEl.innerHTML = '';
+                questions.forEach(q => {
+                    const chip = document.createElement('button');
+                    chip.className = 'suggestion-chip';
+                    chip.textContent = q;
+                    chip.addEventListener('click', () => {
+                        document.getElementById('ai-input').value = q;
+                        document.getElementById('ai-send').click();
+                    });
+                    chipsEl.appendChild(chip);
+                });
+            } catch(e) {
+                chipsEl.innerHTML = '';
+            }
+        }
+
+        function appendMessage(role, text) {
+            const msgs = document.getElementById('ai-messages');
+            const el = document.createElement('div');
+            el.className = `ai-msg ${role}`;
+            if (role === 'assistant' && typeof marked !== 'undefined') {
+                el.innerHTML = marked.parse(text);
+            } else {
+                el.textContent = text;
+            }
+            msgs.appendChild(el);
+            // 只有用户已在底部时才自动滚动
+            const atBottom = msgs.scrollHeight - msgs.scrollTop - msgs.clientHeight < 60;
+            if (atBottom) msgs.scrollTop = msgs.scrollHeight;
+            return el;
+        }
+
+        function initAISidebar() {
+            document.getElementById('ai-avatar').textContent = AI_CONFIG.avatar;
+            document.getElementById('ai-name').textContent = AI_CONFIG.name;
+            document.getElementById('ai-subtitle').textContent = AI_CONFIG.subtitle;
+
+            appendMessage('assistant',
+                `你好！我是${AI_CONFIG.name}，你的守护精灵 ✨\n\n在游戏过程中，你可以随时问我任何问题——关于法律、安全，或者刚才的故事情节。我会尽力帮助你！`
+            );
+
+            document.getElementById('ai-send').addEventListener('click', handleSend);
+            document.getElementById('ai-input').addEventListener('keydown', e => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSend();
+                }
+            });
+        }
+
+        function handleSend() {
+            const input = document.getElementById('ai-input');
+            const text = input.value.trim();
+            if (!text) return;
+            input.value = "";
+            sendToAI(text);
+        }
+
+        // 页面加载时初始化游戏
+        window.onload = async function() {
+            await loadLegalKnowledge();
+            initAISidebar();
+            initGame();
+        };
+    </script>
+</body>
+</html>
